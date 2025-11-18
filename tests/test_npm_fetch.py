@@ -1,9 +1,7 @@
 import unittest
 from unittest.mock import patch, Mock
-import json
 import requests
 import os
-import sys
 import time
 
 
@@ -107,6 +105,18 @@ class TestNpmFetcher(unittest.TestCase):
         self.assertEqual(result['name'], "express")
         self.assertIn("Failed to fetch package info", result['error'])
 
+    # test 404 error handling
+    @patch('requests.Session.get')
+    def test_fetch_package_info_404_error(self, mock_get):
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        result = self.fetcher.fetch_package_info("nonexistent-package", "1.0.0")
+
+        self.assertEqual(result['name'], "nonexistent-package")
+        self.assertIn("Failed to fetch package info", result['error'])
+
     # test multiple packages with rate limiting
     @patch('requests.Session.get')
     def test_fetch_multiple_packages(self, mock_get):
@@ -161,6 +171,8 @@ class TestNpmFetcher(unittest.TestCase):
                 result = self.fetcher.fetch_package_info("express", input_version)
                 self.assertIsNotNone(result)
 
+
+
     # test that get_package_types works
     @patch('requests.Session.get')
     def test_get_package_types(self, mock_get):
@@ -189,4 +201,54 @@ class TestNpmFetcher(unittest.TestCase):
         types_package = self.fetcher.get_package_types('@angular/core')
         self.assertEqual(types_package, '@types/angular__core')
 
-    
+# Integration test runner:
+
+class TestNpmFetcherIntegration(unittest.TestCase):
+    @unittest.skipIf(os.environ.get('SKIP_INTEGRATION_TESTS', 'true').lower() == 'true', "Skipping integration tests")
+    def test_real_npm_fetch(self):
+        fetcher = NpmFetcher()
+        result = fetcher.fetch_package_info("lodash", "4.17.21")
+        self.assertEqual(result['name'], "lodash")
+        self.assertEqual(result['version'], "4.17.21")
+        self.assertIn('lodash', result['description'].lower())
+
+        expected_fields = ['name', 'version', 'description', 'homepage', 'repository', 'license']
+
+        for field in expected_fields:
+            self.assertIn(field, result)
+
+# test caching behavior (not implemented yet)
+# class TestNpmFetcherCaching(unittest.TestCase):
+    # def test_cache_dir_initialization(self):
+    #     fetcher = NpmFetcher(cache_dir="/tmp/npm_cache")
+    #     self.assertEqual(fetcher.cache_dir, "/tmp/npm_cache")
+
+# helper for running specific tests
+def run_specific_test(test_case_class, test_method_name):
+
+    test_classes = {
+        'TestNpmFetcher': TestNpmFetcher,
+        'TestNpmFetcherIntegration': TestNpmFetcherIntegration,
+    }
+
+    class_in_test = test_classes.get(test_case_class)
+
+    if not class_in_test:
+        print(f"Test case class '{test_case_class}' not found.")
+        print(f"Available test case classes: {list(test_classes.keys())}")
+        return
+
+    suite = unittest.TestSuite()
+
+    if test_method_name:
+        suite.addTest(test_case_class(test_method_name))
+    else:
+        loader = unittest.TestLoader
+        suite.addTests(loader.loadTestsFromTestCase(class_in_test))
+
+    runner = unittest.TextTestRunner()
+    result = runner.run(suite)
+    return result.wasSuccessful()
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

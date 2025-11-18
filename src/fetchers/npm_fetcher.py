@@ -68,3 +68,5 @@ class NpmFetcher:
         except requests.RequestException:
             pass
         return None
+    
+    
