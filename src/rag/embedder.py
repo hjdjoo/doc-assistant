@@ -1,4 +1,5 @@
 import numpy as np
+np.float_ = np.float64
 from typing import List, Union, Optional
 from sentence_transformers import SentenceTransformer
 import hashlib

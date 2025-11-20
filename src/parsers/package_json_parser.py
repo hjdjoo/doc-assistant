@@ -25,7 +25,7 @@ class PackageJsonParser:
 
         deps = {}
 
-        for dep_type in ['dependencies', 'dev_dependencies', 'peer_dependencies']:
+        for dep_type in ['dependencies', 'devDependencies', 'peerDependencies']:
             if dep_type in data:
                 deps.update(data[dep_type])
 
@@ -41,7 +41,7 @@ class PackageJsonParser:
         
         # if filepath does not exist, raise error
         if not file_path.exists():
-            return {}
+            raise FileNotFoundError(f"{file_path} does not exist.")
         
         # Parse package-lock.json for dependencies
         with open(file_path, 'r') as f:
@@ -74,12 +74,20 @@ class PackageJsonParser:
     def get_all_dependencies(self) -> Dict[str, Dict[str, Optional[str]]]:
         pkg_deps = self.parse_package_json()
         lock_deps = self.parse_package_lock()
-        
+
         all_deps = {}
         for dep, version_spec in pkg_deps.items():
+            # print(dep)
             all_deps[dep] = {
                 "version_spec": version_spec,
                 "resolved_version": lock_deps.get(dep, {}).get("version", version_spec),
             }
-        
+
+        for dep, lock_info in lock_deps.items():
+            all_deps[dep] = {
+                "version_spec": None,
+                "resolved_version": lock_info.get("version"),
+            }
+
+
         return all_deps

@@ -5,6 +5,7 @@ import numpy as np
 import uuid
 from datetime import datetime
 
+np.float_ = np.float64
 
 class VectorStore:
   def __init__(

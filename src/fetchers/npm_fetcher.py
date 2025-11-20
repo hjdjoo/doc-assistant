@@ -20,34 +20,40 @@ class NpmFetcher:
             response = self.session.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
+            if not data.get('versions'):
+                raise AttributeError("No versions detected for package")
 
-            if version and version in data.get('versio'):
+            # Determine which version data to use; if specific version requested, use that. Otherwise, use latest.
+            if version and version in data.get('versions'):
                 version_data = data['versions'][version]
+                
             else:
                 latest_version = data.get('dist-tags', {}).get('latest')
                 version_data = data['versions'].get(latest_version, {}) 
-
+                # print(version_data)
+                
             return {
                 "name": package_name,
-                "version": version,
-                "description": version_data.get('description', ''),
-                "homepage": version_data.get('homepage', ''),
-                "repository": version_data.get('repository', {}),
-                "keywords": version_data.get('keywords', []),
-                "readme": version_data.get('readme', 'No README available.'),
+                "version": version_data.get('version'),
+                "description": data.get('description', ''),
+                "homepage": data.get('homepage', ''),
+                "repository": data.get('repository', {}),
+                "keywords": data.get('keywords', []),
+                "readme": data.get('readme', 'No README available.'),
                 "dependencies": version_data.get('dependencies', {}),
                 "dist_tags": data.get('dist-tags', {}),
-                "license": version_data.get('license', 'Unknown'),
+                "license": data.get('license', 'Unknown'),
                 "time_updated": data.get('time', {}).get(version, '')
             }
-        except requests.RequestException as e:
+        except (requests.HTTPError, requests.RequestException, AttributeError) as e:
             return {
                 "name": package_name,
                 "error": f"Failed to fetch package info: {str(e)}"
             }
-        
 
-    def fetch_multiple_packages(self, packages: Dict[str, Optional[str]], delay: float=0.1) -> Dict[str, Dict]:
+    def fetch_multiple_packages(self, 
+                                packages: Dict[str, Optional[str]], 
+                                delay: float=0.1) -> Dict[str, Dict]:
         results = {}
         for pkg, ver in packages.items():
             results[pkg] = self.fetch_package_info(pkg, ver)

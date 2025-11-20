@@ -58,31 +58,31 @@ class TestPackageJsonParser(unittest.TestCase):
             }
         }
 
-        def test_parse_package_json_success(self):
-            # create temp file
-            with tempfile.NamedTemporaryFile(mode='w+', suffix='json',delete=False) as f:
-                json.dump(self.sample_package_json, f)
-                temp_path = f.name
+    def test_parse_package_json_success(self):
+        # create temp file
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='json',delete=False) as f:
+            json.dump(self.sample_package_json, f)
+            temp_path = f.name
 
-            try:
-                deps = self.parser.parse_package_json(temp_path)
+        try:
+            deps = self.parser.parse_package_json(temp_path)
 
-                self.assertIn('express', deps)
-                self.assertIn('axios', deps)
-                self.assertIn('lodash', deps)
-                self.assertIn('jest', deps)
-                self.assertIn('eslint', deps)
-                self.assertIn('react', deps)
+            self.assertIn('express', deps)
+            self.assertIn('axios', deps)
+            self.assertIn('lodash', deps)
+            self.assertIn('jest', deps)
+            self.assertIn('eslint', deps)
+            self.assertIn('react', deps)
 
-                self.assertEqual(deps['express'], '^4.18.0')
-                self.assertEqual(deps['axios'], '^1.4.0')
-                self.assertEqual(deps['lodash'], '^4.17.21')
-                self.assertEqual(deps['jest'], '^29.0.0')
-                self.assertEqual(deps['eslint'], '^8.0.0')
-                self.assertEqual(deps['react'], '>=16.8.0')
+            self.assertEqual(deps['express'], '^4.18.0')
+            self.assertEqual(deps['axios'], '^1.4.0')
+            self.assertEqual(deps['lodash'], '^4.17.21')
+            self.assertEqual(deps['jest'], '^29.0.0')
+            self.assertEqual(deps['eslint'], '^8.0.0')
+            self.assertEqual(deps['react'], '>=16.8.0')
 
-            finally:
-                os.unlink(temp_path)
+        finally:
+            os.unlink(temp_path)
 
     def test_parse_package_lock_success(self):
         # create temp file
@@ -96,8 +96,8 @@ class TestPackageJsonParser(unittest.TestCase):
             self.assertIn('express', deps)
             self.assertIn('axios', deps)
 
-            self.assertEqual(deps['express'], '4.18.2')
-            self.assertEqual(deps['axios'], '1.4.0')
+            self.assertEqual(deps['express']['version'], '4.18.2')
+            self.assertEqual(deps['axios']['version'], '1.4.0')
 
         finally:
             os.unlink(temp_path)
@@ -157,8 +157,8 @@ class TestPackageJsonParser(unittest.TestCase):
             self.assertIn('express', packages)
             self.assertIn('axios', packages)
 
-            self.assertEqual(packages['express'], '4.18.2')
-            self.assertEqual(packages['axios'], '1.4.0')
+            self.assertEqual(packages['express']['version'], '4.18.2')
+            self.assertEqual(packages['axios']['version'], '1.4.0')
 
             self.assertIn('registry.npmjs.org', packages['express']['resolved'])
 
@@ -183,7 +183,7 @@ class TestPackageJsonParser(unittest.TestCase):
                 json.dump(self.sample_package_lock, f)
 
             parser = PackageJsonParser(temp_dir)
-            all_deps = parser.get_all_dependencies(str(package_json_path), str(package_lock_path))
+            all_deps = parser.get_all_dependencies()
 
             self.assertIn('express', all_deps)
             self.assertIn('axios', all_deps)
@@ -192,26 +192,33 @@ class TestPackageJsonParser(unittest.TestCase):
             self.assertIn('eslint', all_deps)
             self.assertIn('react', all_deps)
 
-            self.assertEqual(all_deps['express']['version'], '4.18.2')  # from lock file
-            self.assertEqual(all_deps['axios']['version'], '1.4.0')     # from lock file
-            self.assertEqual(all_deps['lodash']['version'], '^4.17.21') # from package.json
+            self.assertEqual(all_deps['express']['resolved_version'], '4.18.2')  # from lock file
+            self.assertEqual(all_deps['axios']['resolved_version'], '1.4.0')     # from lock file
+            self.assertEqual(all_deps['lodash']['resolved_version'], '^4.17.21') # from package.json
 
         
     @patch('builtins.open', new_callable=mock_open, read_data='{}')
     def test_parse_with_mocked_file(self, mock_file):
-        mock_file.return_value.read.return_value = json.dumps(self.sample_package_json)
 
-        deps = self.parser.parse_package_json("fake/path/package.json")
+        with tempfile.TemporaryDirectory() as temp_dir:
 
-        mock_file.assert_called_once_with(Path("fake/path/package.json"), 'r')
+            path = Path(temp_dir) / "package.json"
 
-        self.assertEqual(len(deps), 6)  # Should have 6 dependencies total
-        self.assertEqual(deps['express'], '^4.18.0')
-        self.assertEqual(deps['jest'], '^29.0.0')
-        self.assertIn('react', deps)
-        
-        # Verify the mock's read method was actually called
-        mock_file.return_value.read.assert_called_once()
+            with patch('pathlib.Path.exists', return_value=True):
+
+                mock_file.return_value.read.return_value = json.dumps(self.sample_package_json)
+
+                deps = self.parser.parse_package_json(path)
+
+                mock_file.assert_called_once_with(Path(path), 'r')
+
+                self.assertEqual(len(deps), 6)  # Should have 6 dependencies total
+                self.assertEqual(deps['express'], '^4.18.0')
+                self.assertEqual(deps['jest'], '^29.0.0')
+                self.assertIn('react', deps)
+                
+                # Verify the mock's read method was actually called
+                mock_file.return_value.read.assert_called_once()
 
 
 class TestPackageJsonParserEdgeCases(unittest.TestCase):
