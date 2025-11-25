@@ -21,11 +21,16 @@ class DocumentChunker:
         self.chars_per_token = 4
 
     def chunk_text(self, text:str, metadata: Optional[Dict] = None) -> List[Dict]:
-        if not text or len(text.strip() < self.min_chunk_size):
+        if not text or (len(text.strip()) < self.min_chunk_size):
             return []
         
         metadata = metadata or {}
-        # to implement: check if this is a markdown file and handle accordingly
+
+        if self._is_markdown_heavy(text):
+            return self._chunk_markdown(text, metadata)
+        else:
+            return self._chunk_plain_text(text, metadata)
+
 
     def _is_markdown_heavy(self, text: str) -> bool:
         
@@ -42,10 +47,11 @@ class DocumentChunker:
         return matches > (len(text)/1000 * 5) # more than 5 markdown elements per 1000 chars
     
     def _chunk_markdown(self, text: str, metadata: Dict) -> List[Dict]:
-        # to implement: chunk markdown files intelligently
-        chunks = []
         
-        code_block_pattern = r'```[\s\S]*?```'
+        chunks = []
+        pending_chunk = ""
+        
+        code_block_pattern = r'(```[\s\S]*?```)'
         parts = re.split(code_block_pattern, text)
 
         # current_section = ""
@@ -53,17 +59,17 @@ class DocumentChunker:
 
         # as we go through the parts, we need to keep track of headers
         for part in enumerate(parts):
-            if not part.strip():
+            if not part[1].strip():
                 continue
-            
+
             # if this is a code block,
-            if part.startswith('```'):
+            if part[1].startswith('```'):
                 # figure out the language
-                lang_match = re.match(r'```(\w+)?', part)
+                lang_match = re.match(r'```(\w+)?', part[1])
                 lang = lang_match.group(1) if lang_match else "code"
                 # create a chunk and append to chunks
                 chunk = {
-                    "text": part,
+                    "text": part[1],
                     "metadata": {
                         **metadata, 
                         "language": lang, 
@@ -77,7 +83,7 @@ class DocumentChunker:
             else:
                 # split line by line and look for headers
                 header_pattern = r'^(#{1,6})\s+(.+)$'
-                lines = part.split('\n')
+                lines = part[1].split('\n')
 
                 # keep track of the content under each header
                 current_chunk_lines = []
@@ -128,15 +134,47 @@ class DocumentChunker:
 
                 if current_chunk_lines:
                     chunk_text = '\n'.join(current_chunk_lines)
-                    if len(chunk_text.strip()) > self.min_chunk_size:
+                    
+                    if len(chunk_text.strip()) < self.min_chunk_size:
+                        if pending_chunk:
+                            pending_chunk += "\n\n" + chunk_text
+                        else:
+                            pending_chunk = chunk_text
+                            if len(pending_chunk) > self.min_chunk_size:
+                                chunks.append({
+                                    'text': chunk_text,
+                                    'metadata': {
+                                        **metadata,
+                                        "chunk_type": "text",
+                                        "header": current_header
+                                        }
+                                })
+                                pending_chunk = ""
+
+                    else:
+                        if pending_chunk:
+                            chunk_text = pending_chunk + "\n\n" + chunk_text
+                            pending_chunk = ""
+
                         chunks.append({
                             'text': chunk_text,
                             'metadata': {
                                 **metadata,
-                                "chunk_type": "text",
-                                "header": current_header
-                                }
+                                'chunk_type': 'text',
+                                'header': current_header
+                            }
                         })
+
+        if pending_chunk:
+            chunks.append({
+                'text': pending_chunk,
+                'metadata': {
+                    **metadata,
+                    "chunk_type": "text",
+                    "header": current_header
+                    }
+            })
+
         return chunks 
 
     def _chunk_plain_text(self, text: str, metadata: Dict) -> List[Dict]:

@@ -4,7 +4,6 @@ import requests
 import os
 import time
 
-
 from src.fetchers.npm_fetcher import NpmFetcher
 
 
@@ -57,9 +56,7 @@ class TestNpmFetcher(unittest.TestCase):
         mock_get.return_value = mock_response
 
         result = self.fetcher.fetch_package_info("express", "4.18.2")
-
-        print(result)
-
+        
         self.assertEqual(result['name'], "express")
         self.assertEqual(result['version'], "4.18.2")
         self.assertEqual(result['description'], "Fast, unopinionated, minimalist web framework")
