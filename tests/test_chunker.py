@@ -1,10 +1,6 @@
 import unittest
-from unittest.mock import Mock, patch
-
 
 from src.rag.chunker import DocumentChunker
-
-print("Running tests in test_chunker.py")
 
 class TestChunker(unittest.TestCase):
 
