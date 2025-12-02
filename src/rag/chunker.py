@@ -117,7 +117,7 @@ class DocumentChunker:
                         current_text = '\n'.join(current_chunk_lines)
 
                         if len(current_text) >= self.chunk_size * self.chars_per_token:
-                            split_point = self._find_split_point()
+                            split_point = self._find_split_point(current_text)
                             if split_point > 0:
                                 chunk_text = current_text[:split_point]
                                 chunks.append({
@@ -254,8 +254,10 @@ class DocumentChunker:
                 
                 for match in matches:
                     func_code = match.group(0)
+                    # print(func_code)
                     name_match = re.search(r'(function|class|const)\s+(\w+)', func_code)
-                    name = name_match.group(1) if name_match else "unknown"
+
+                    name = name_match.group(2) if name_match else "unknown"
 
                     chunks.append({
                         'text': func_code,

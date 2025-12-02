@@ -182,11 +182,11 @@ class DataProcessor {
      chunks = self.chunker.chunk_code(js_code, "javascript")
      self.assertGreater(len(chunks), 1)
 
-     function_names=[c['metadata'].get('function_name') for c in chunks]
+     function_names=[c['metadata'].get('name') for c in chunks]
      print(function_names)
-     self.assertIn(any(name == 'processData' in str(name) for name in function_names), True)
-     self.assertIn(any(name == 'fetchData' in str(name) for name in function_names), True)
-     self.assertIn(any(name == 'arrowFunc' in str(name) for name in function_names), True)
+     self.assertEqual(any(name == 'processData' in str(name) for name in function_names), True)
+     self.assertEqual(any(name == 'fetchData' in str(name) for name in function_names), True)
+     self.assertEqual(any(name == 'arrowFunc' in str(name) for name in function_names), True)
 
   
   def test_chunk_code_fallback(self):
