@@ -17,11 +17,11 @@ class VectorStore:
       path = persist_directory,
       settings=Settings(anonymized_telemetry=False, allow_reset=True)
     )
-
     try:
       self.collection = self.client.get_collection(name=collection_name)
       print(f"Using existing collection: {collection_name}")
     except:
+      print(f"No collection named {collection_name}")
       self.collection = self.client.create_collection(
         name=collection_name, 
         metadata={"hnsw:space": "cosine"}
@@ -81,8 +81,9 @@ class VectorStore:
 
     if query:
       query_params['query_texts'] = [query]
+
     else:
-      query_params['query_embeddings'] = [query.embedding.tolist()]
+      query_params['query_embeddings'] = [query_embedding]
 
     if filter_metadata:
       where_clause = {}
@@ -94,14 +95,15 @@ class VectorStore:
 
       query_params['where'] = where_clause
 
-    results = self.collection.query(**query_params)
+    results = self.collection.query(**query_params) 
 
     formatted_results = []
+
     for i in range(len(results['ids'][0])):
       formatted_results.append({
         'id': results['ids'][0][i],
         'text': results['documents'][0][i],
-        'metadata': results['metadata'][0][i] if results['metadata'] else {},
+        'metadata': results['metadatas'][0][i] if results['metadatas'] else {},
         'score': 1 - results['distances'][0][i]
       })
 
@@ -137,46 +139,46 @@ class VectorStore:
 
     self.collection.update(**update_params)
 
-def delete(self, ids: Union[str, List[str]]):
-  self.collection.delete(ids = ids if isinstance(ids, list) else [ids])
+  def delete(self, ids: Union[str, List[str]]):
+    self.collection.delete(ids = ids if isinstance(ids, list) else [ids])
 
-def get_by_package(self, package_name: str) -> List[Dict]:
-  results = self.collection.get(where= {
-    "package": { 
-      "$eq": package_name
-      }
-    })
-  
-  formatted = []
-
-  if results['ids']:
-    for i in range(len(results['ids'])):
-      formatted.append({
-        'id': results['ids'][i],
-        'text': results['documents'][i] if results['documents'] else None,
-        'metadata': results['metadatas'][i] if results['metadatas'] else {}
+  def get_by_package(self, package_name: str) -> List[Dict]:
+    results = self.collection.get(where= {
+      "package": { 
+        "$eq": package_name
+        }
       })
+    
+    formatted = []
 
-  return formatted
+    if results['ids']:
+      for i in range(len(results['ids'])):
+        formatted.append({
+          'id': results['ids'][i],
+          'text': results['documents'][i] if results['documents'] else None,
+          'metadata': results['metadatas'][i] if results['metadatas'] else {}
+        })
 
-def clear_collection(self):
-  self.client.delete_collection(self.collection_name)
-  self.collection = self.client.create_collection(
-    name = self.collection.name,
-    metadata = {
-      "hnsw:space": "cosine"
+    return formatted
+
+  def clear_collection(self):
+    self.client.delete_collection(self.collection_name)
+    self.collection = self.client.create_collection(
+      name = self.collection.name,
+      metadata = {
+        "hnsw:space": "cosine"
+      }
+    )
+    print(f"Cleared Collection: {self.collection_name}")
+
+  def get_stats(self) -> Dict:
+    count = self.collection.count()
+
+    sample = self.collection.get(limit=1)
+    metadata_fields = list(sample['metadatas'][0].keys()) if sample['metadatas'] else []
+
+    return {
+      'total_documents': count,
+      'collection_name': self.collection_name,
+      'metadata_fields': metadata_fields
     }
-  )
-  print(f"Cleared Collection: {self.collection_name}")
-
-def get_stats(self) -> Dict:
-  count = self.collection.count()
-
-  sample = self.collection.get(limit=1)
-  metadata_fields = list(sample['metadatas'][0].keys()) if sample['metadatas'] else []
-
-  return {
-    'total_documents': count,
-    'collection_name': self.collection_name,
-    'metadata_fields': metadata_fields
-  }

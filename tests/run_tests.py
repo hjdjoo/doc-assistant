@@ -14,20 +14,20 @@ def run_all_tests():
     result = runner.run(suite)
 
     return result.wasSuccessful()
-
+  
 def run_specific_module(module_name: str):
     loader = unittest.TestLoader()
     try:
       # check module name: "parser", "fetcher", or "rag" and import accordingly
       if module_name == "parser":
-          from tests import test_parser
-          suite = loader.loadTestsFromModule(test_parser)
+          from tests import test_package_json_parser
+          suite = loader.loadTestsFromModule(test_package_json_parser)
       elif module_name == "fetcher":
           from tests import test_npm_fetch
           suite = loader.loadTestsFromModule(test_npm_fetch)
       elif module_name == "rag":
-          from tests import test_rag
-          suite = loader.loadTestsFromModule(test_rag)
+          from tests import test_vector_store
+          suite = loader.loadTestsFromModule(test_vector_store)
       else:
           print(f"Unknown module name: {module_name}")
           return False

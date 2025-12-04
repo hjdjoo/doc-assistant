@@ -179,7 +179,7 @@ class DataProcessor {
      self.assertGreater(len(chunks), 1)
 
      function_names=[c['metadata'].get('name') for c in chunks]
-     print(function_names)
+
      self.assertEqual(any(name == 'processData' in str(name) for name in function_names), True)
      self.assertEqual(any(name == 'fetchData' in str(name) for name in function_names), True)
      self.assertEqual(any(name == 'arrowFunc' in str(name) for name in function_names), True)

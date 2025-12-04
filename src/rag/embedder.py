@@ -36,6 +36,7 @@ class Embedder:
   
   def _save_cache(self):
     if self.cache_file:
+      # print("file: ", self.cache_file)
       with open(self.cache_file, 'w') as f:
         json.dump(self.cache, f)
       
@@ -51,9 +52,9 @@ class Embedder:
 
     for i, t, in enumerate(texts):
       cache_key = self._get_cache_key(t)
-      if use_cache and cache_key in self.cache:
+      if use_cache and cache_key in self.cache: 
         embeddings.append(np.array(self.cache[cache_key]))
-      else:
+      else:        
         texts_to_embed.append(t)
         cache_indices.append(i)
         embeddings.append(None)  # Placeholder
@@ -64,15 +65,27 @@ class Embedder:
         convert_to_numpy=True,
         show_progress_bar=len(texts_to_embed) > 10
       )
+
+      if new_embeddings.ndim == 1:
+        new_embeddings = [new_embeddings]
+      elif new_embeddings.ndim == 2:
+        new_embeddings = list(new_embeddings) 
+
       for idx, emb in zip(cache_indices, new_embeddings):
-        embeddings[idx] = emb
+        embeddings[idx] = np.array(emb)
+        # print("embedding: ", emb)
+        # print("embeddings: ", embeddings)
         if use_cache:
           cache_key = self._get_cache_key(texts[idx])
-          self.cache[cache_key] = emb.tolist()
+          if isinstance(emb, np.ndarray):
+            self.cache[cache_key] = emb.tolist()
+          # print("cache_key", cache_key)
+          else: 
+            self.cache[cache_key] = list(emb)
 
       if use_cache and len(self.cache)%100 == 0:
         self._save_cache()
-      
+    
     return embeddings[0] if is_single else embeddings
     
   def embed_query(self, query: str) -> np.ndarray:
@@ -87,6 +100,7 @@ class Embedder:
       embeddings = self.embed(batch)
       all_embeddings.extend(embeddings)
     return all_embeddings
+  
   def save_cache(self):
     if self.cache_dir:
       self._save_cache()

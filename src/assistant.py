@@ -35,3 +35,31 @@ class DocAssistant:
       self.llm = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) #not yet implemented, expect error
       self.model = "."
 
+
+  def scan_project(self) -> Dict:
+    self.dependencies = self.parser.get_all_dependencies()
+
+    summary = {
+      
+    }
+
+  def _detect_framework(self) -> Optional[str]:
+    """Detect which framework the project uses"""
+    deps = self.dependencies.keys()
+    
+    if 'react' in deps:
+      if 'next' in deps:
+        return 'Next.js'
+      return 'React'
+    elif 'vue' in deps:
+      if 'nuxt' in deps:
+        return 'Nuxt'
+      return 'Vue'
+    elif 'angular' in deps:
+      return 'Angular'
+    elif 'express' in deps:
+      return 'Express'
+    elif 'fastify' in deps:
+      return 'Fastify'
+    
+    return None
